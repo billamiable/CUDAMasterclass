@@ -18,28 +18,31 @@ __global__ void blocking_nonblocking_test1()
 	}
 }
 
-//int main(int argc, char ** argv)
-//{
-//	int size = 1 << 15;
-//	
-//	cudaStream_t stm1,stm2,stm3;
-//	gpuErrchk(cudaStreamCreateWithFlags(&stm1, cudaStreamNonBlocking));
-//	gpuErrchk(cudaStreamCreate(&stm2));
-//	gpuErrchk(cudaStreamCreateWithFlags(&stm3,cudaStreamNonBlocking));
-//
-//
-//	dim3 block(128);
-//	dim3 grid(size / block.x);
-//
-//	blocking_nonblocking_test1 << <grid, block, 0 , stm1 >> > ();
-//	blocking_nonblocking_test1 << <grid, block >> > ();
-//	blocking_nonblocking_test1 << <grid, block, 0, stm3 >> > ();
-//
-//	gpuErrchk(cudaStreamDestroy(stm1));
-//	gpuErrchk(cudaStreamDestroy(stm2));
-//	gpuErrchk(cudaStreamDestroy(stm3));
-//	gpuErrchk(cudaDeviceSynchronize());
-//
-//	gpuErrchk(cudaDeviceReset());
-//	return 0;
-//}
+int main(int argc, char ** argv)
+{
+	int size = 1 << 15;
+	
+	cudaStream_t stm1,stm2,stm3;
+	// use the following setup, then all 3 kernels should launch in parallel
+	// using cudaStreamCreate, it's blocking stream 
+	gpuErrchk(cudaStreamCreateWithFlags(&stm1, cudaStreamNonBlocking));
+	gpuErrchk(cudaStreamCreate(&stm2));
+	// using cudaStreamCreateWithFlags, it can get rid of blocking mechanismS
+	gpuErrchk(cudaStreamCreateWithFlags(&stm3,cudaStreamNonBlocking));
+
+
+	dim3 block(128);
+	dim3 grid(size / block.x);
+
+	blocking_nonblocking_test1 << <grid, block, 0 , stm1 >> > ();
+	blocking_nonblocking_test1 << <grid, block >> > ();
+	blocking_nonblocking_test1 << <grid, block, 0, stm3 >> > ();
+
+	gpuErrchk(cudaStreamDestroy(stm1));
+	gpuErrchk(cudaStreamDestroy(stm2));
+	gpuErrchk(cudaStreamDestroy(stm3));
+	gpuErrchk(cudaDeviceSynchronize());
+
+	gpuErrchk(cudaDeviceReset());
+	return 0;
+}

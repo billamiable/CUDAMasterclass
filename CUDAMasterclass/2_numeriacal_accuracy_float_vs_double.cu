@@ -33,10 +33,10 @@ void double_accuracy_comparison()
 	}
 }
 
-//int main()
-//{
-//	float_accuracy_comparison();
-//	double_accuracy_comparison();
-//
-//	return 0;
-//}
+int main()
+{
+	float_accuracy_comparison();
+	double_accuracy_comparison();
+
+	return 0;
+}

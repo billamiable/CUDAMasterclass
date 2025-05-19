@@ -9,28 +9,34 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
+// that's why template is also asked
 template<unsigned int iblock_size>
 __global__ void reduction_kernel_complete_template(int * input, 
 	int * temp, int size)
 {
 	int tid = threadIdx.x;
-	int index = blockDim.x * blockIdx.x * 8 + threadIdx.x;
+	// int index = blockDim.x * blockIdx.x * 8 + threadIdx.x;
+	int index = blockDim.x * blockIdx.x * 4 + threadIdx.x;
 
-	int * i_data = input + blockDim.x * blockIdx.x * 8;
+	// int * i_data = input + blockDim.x * blockIdx.x * 8;
+	int * i_data = input + blockDim.x * blockIdx.x * 4;
 	
-	//unrolling blocks
-	if ((index + 7 * blockDim.x) < size)
+	//unrolling thread blocks
+	// it's not used in previous implementation
+	// if ((index + 7 * blockDim.x) < size)
+	if ((index + 3 * blockDim.x) < size)
 	{
 		int a1 = input[index];
 		int a2 = input[index + blockDim.x];
 		int a3 = input[index + 2 * blockDim.x];
 		int a4 = input[index + 3 * blockDim.x];
-		int a5 = input[index + 4 * blockDim.x];
-		int a6 = input[index + 5 * blockDim.x];
-		int a7 = input[index + 6 * blockDim.x];
-		int a8 = input[index + 7 * blockDim.x];
+		// int a5 = input[index + 4 * blockDim.x];
+		// int a6 = input[index + 5 * blockDim.x];
+		// int a7 = input[index + 6 * blockDim.x];
+		// int a8 = input[index + 7 * blockDim.x];
 
-		input[index] = a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8;
+		// input[index] = a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8;
+		input[index] = a1 + a2 + a3 + a4;
 	}
 
 	__syncthreads();
@@ -74,73 +80,74 @@ __global__ void reduction_kernel_complete_template(int * input,
 	}
 }
 
-//int main(int argc, char ** argv)
-//{
-//    printf("Running parallel reduction with complete unrolling kernel \n");
-//
-//	int size = 1 << 25;
-//	int byte_size = size * sizeof(int);
-//	int block_size = 128;
-//
-//	int * h_input, *h_ref;
-//	h_input = (int*)malloc(byte_size);
-//
-//	initialize(h_input, size);
-//
-//	int cpu_result = reduction_cpu(h_input, size);
-//
-//	dim3 block(block_size);
-//	dim3 grid((size / block_size) / 8);
-//
-//	printf("Kernel launch parameters || grid : %d, block : %d \n", grid.x, block.x);
-//
-//	int temp_array_byte_size = sizeof(int)* grid.x;
-//
-//	h_ref = (int*)malloc(temp_array_byte_size);
-//
-//	int * d_input, *d_temp;
-//	gpuErrchk(cudaMalloc((void**)&d_input, byte_size));
-//	gpuErrchk(cudaMalloc((void**)&d_temp, temp_array_byte_size));
-//
-//	gpuErrchk(cudaMemset(d_temp, 0, temp_array_byte_size));
-//	gpuErrchk(cudaMemcpy(d_input, h_input, byte_size,
-//		cudaMemcpyHostToDevice));
-//
-//	switch (block_size)
-//	{
-//	case 1024 :
-//		reduction_kernel_complete_template <1024> <<< grid, block >> > (d_input, d_temp, size);
-//		break;
-//	case 512:
-//		reduction_kernel_complete_template <512> << < grid, block >> > (d_input, d_temp, size);
-//		break;
-//	case 256:
-//		reduction_kernel_complete_template <256> << < grid, block >> > (d_input, d_temp, size);
-//		break;
-//	case 128:
-//		reduction_kernel_complete_template <128> << < grid, block >> > (d_input, d_temp, size);
-//		break;
-//	case 64:
-//		reduction_kernel_complete_template <64> << < grid, block >> > (d_input, d_temp, size);
-//		break;
-//	}
-//
-//	gpuErrchk(cudaDeviceSynchronize());
-//	gpuErrchk(cudaMemcpy(h_ref, d_temp, temp_array_byte_size, cudaMemcpyDeviceToHost));
-//
-//	int gpu_result = 0;
-//	for (int i = 0; i < grid.x; i++)
-//	{
-//		gpu_result += h_ref[i];
-//	}
-//
-//	compare_results(gpu_result, cpu_result);
-//
-//	gpuErrchk(cudaFree(d_input));
-//	gpuErrchk(cudaFree(d_temp));
-//	free(h_input);
-//	free(h_ref);
-//
-//	gpuErrchk(cudaDeviceReset());
-//	return 0;
-//}
+int main(int argc, char ** argv)
+{
+   printf("Running parallel reduction with complete unrolling kernel \n");
+
+	int size = 1 << 27;
+	int byte_size = size * sizeof(int);
+	int block_size = 128;
+
+	int * h_input, *h_ref;
+	h_input = (int*)malloc(byte_size);
+
+	initialize(h_input, size);
+
+	int cpu_result = reduction_cpu(h_input, size);
+
+	dim3 block(block_size);
+	// dim3 grid((size / block_size) / 8);
+	dim3 grid((size / block_size) / 4);
+
+	printf("Kernel launch parameters || grid : %d, block : %d \n", grid.x, block.x);
+
+	int temp_array_byte_size = sizeof(int)* grid.x;
+
+	h_ref = (int*)malloc(temp_array_byte_size);
+
+	int * d_input, *d_temp;
+	gpuErrchk(cudaMalloc((void**)&d_input, byte_size));
+	gpuErrchk(cudaMalloc((void**)&d_temp, temp_array_byte_size));
+
+	gpuErrchk(cudaMemset(d_temp, 0, temp_array_byte_size));
+	gpuErrchk(cudaMemcpy(d_input, h_input, byte_size,
+		cudaMemcpyHostToDevice));
+
+	switch (block_size)
+	{
+	case 1024 :
+		reduction_kernel_complete_template <1024> <<< grid, block >> > (d_input, d_temp, size);
+		break;
+	case 512:
+		reduction_kernel_complete_template <512> << < grid, block >> > (d_input, d_temp, size);
+		break;
+	case 256:
+		reduction_kernel_complete_template <256> << < grid, block >> > (d_input, d_temp, size);
+		break;
+	case 128:
+		reduction_kernel_complete_template <128> << < grid, block >> > (d_input, d_temp, size);
+		break;
+	case 64:
+		reduction_kernel_complete_template <64> << < grid, block >> > (d_input, d_temp, size);
+		break;
+	}
+
+	gpuErrchk(cudaDeviceSynchronize());
+	gpuErrchk(cudaMemcpy(h_ref, d_temp, temp_array_byte_size, cudaMemcpyDeviceToHost));
+
+	int gpu_result = 0;
+	for (int i = 0; i < grid.x; i++)
+	{
+		gpu_result += h_ref[i];
+	}
+
+	compare_results(gpu_result, cpu_result);
+
+	gpuErrchk(cudaFree(d_input));
+	gpuErrchk(cudaFree(d_temp));
+	free(h_input);
+	free(h_ref);
+
+	gpuErrchk(cudaDeviceReset());
+	return 0;
+}

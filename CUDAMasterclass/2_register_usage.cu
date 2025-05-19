@@ -4,10 +4,15 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
+// nvcc --ptxas-options=-v -o register_usage 2_register_usage.cu
 __global__ void  register_usage_test(int * results, int size)
 {
+	// if comment out all the below lines, still use 2 registers
+	// because they are internally defined
 	int gid = blockDim.x * blockIdx.x + threadIdx.x;
 
+	// result is that still use 4 registers
+	// cannot really expect the number due to compiler optimization
 	int x1 = 3465;
 	int x2 = 1768;
 	int x3 = 453;
@@ -22,37 +27,37 @@ __global__ void  register_usage_test(int * results, int size)
 	}
 }
 
-//int main()
-//{
-//	int size = 1 << 22;
-//	int byte_size = sizeof(int)*size;
-//
-//	int * h_ref = (int*) malloc(byte_size);
-//	int * d_results;
-//	cudaMalloc((void**)&d_results, byte_size);
-//	cudaMemset(d_results, 0, byte_size);
-//
-//	dim3 blocks(128);
-//	dim3 grid((size+blocks.x-1)/blocks.x);
-//
-//	printf("launching the kernel \n");
-//	register_usage_test << <grid,blocks >> > (d_results, size);
-//	cudaDeviceSynchronize();
-//
-//	cudaMemcpy(h_ref, d_results, byte_size, cudaMemcpyDeviceToHost);
-//	printf("Results have arrived \n");
-//
-//	int sum = 0;
-//
-//	for (int i = 0; i < size; i++)
-//	{
-//		sum += h_ref[i];
-//	}
-//
-//	printf("final sum : %d \n",sum);
-//
-//	return 0;
-//}
+int main()
+{
+	int size = 1 << 22;
+	int byte_size = sizeof(int)*size;
+
+	int * h_ref = (int*) malloc(byte_size);
+	int * d_results;
+	cudaMalloc((void**)&d_results, byte_size);
+	cudaMemset(d_results, 0, byte_size);
+
+	dim3 blocks(128);
+	dim3 grid((size+blocks.x-1)/blocks.x);
+
+	printf("launching the kernel \n");
+	register_usage_test << <grid,blocks >> > (d_results, size);
+	cudaDeviceSynchronize();
+
+	cudaMemcpy(h_ref, d_results, byte_size, cudaMemcpyDeviceToHost);
+	printf("Results have arrived \n");
+
+	int sum = 0;
+
+	for (int i = 0; i < size; i++)
+	{
+		sum += h_ref[i];
+	}
+
+	printf("final sum : %d \n",sum);
+
+	return 0;
+}
 
 
 

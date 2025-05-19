@@ -179,9 +179,9 @@ void run_compact()
 	free(h_ref);
 }
 
-//int main()
-//{
-//	run_compact();
-//	system("pause");
-//	return 0;
-//}
+int main()
+{
+	run_compact();
+	system("pause");
+	return 0;
+}

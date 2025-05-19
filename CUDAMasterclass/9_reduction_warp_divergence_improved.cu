@@ -15,6 +15,8 @@ __global__ void reduction_neighbored_pairs_improved(
 	int gid = blockDim.x * blockIdx.x + threadIdx.x;
 
 	//local data block pointer
+	// direct identifier change for memory access
+	// make sure differnt thread block access different part
 	int * i_data = int_array + blockDim.x * blockIdx.x;
 
 	if (gid > size)
@@ -22,13 +24,23 @@ __global__ void reduction_neighbored_pairs_improved(
 
 	for (int offset = 1; offset <= blockDim.x /2 ; offset *= 2)
 	{
+		// the biggest change is here!
+		// manually change the index
+		// reason for multiply 2
+		// Thread 0: a0 + a1
+		// Thread 1: a2 + a3
+		// Thread 2: a4 + a5
+		// Thread 3: a6 + a7
+		// using self-computed index can avoid the need to determine thread using condition check
 		int index = 2 * offset * tid;
 
+		// only need to make sure that doesn't exceed block dim
 		if (index < blockDim.x)
 		{
+			// no longer use gid, instead use self-computed index
 			i_data[index] += i_data[index + offset];
 		}
-
+		// same as before
 		__syncthreads();
 	}
 
@@ -38,56 +50,56 @@ __global__ void reduction_neighbored_pairs_improved(
 	}
 }
 
-//int main(int argc, char ** argv)
-//{
-//	printf("Running parallel reduction with neighbored pairs improved kernel \n");
-//
-//	int size = 1 << 27;
-//	int byte_size = size * sizeof(int);
-//	int block_size = 128;
-//
-//	int * h_input, *h_ref;
-//	h_input = (int*)malloc(byte_size);
-//
-// 	initialize(h_input, size, INIT_RANDOM);
-//
-//	int cpu_result = reduction_cpu(h_input, size);
-//
-//	dim3 block(block_size);
-//	dim3 grid(size / block.x);
-//
-//	printf("Kernel launch parameters || grid : %d, block : %d \n", grid.x, block.x);
-//
-//	int temp_array_byte_size = sizeof(int)* grid.x;
-//
-//	h_ref = (int*)malloc(temp_array_byte_size);
-//
-//	int * d_input, *d_temp;
-//	gpuErrchk(cudaMalloc((void**)&d_input, byte_size));
-//	gpuErrchk(cudaMalloc((void**)&d_temp, temp_array_byte_size));
-//
-//	gpuErrchk(cudaMemset(d_temp, 0, temp_array_byte_size));
-//	gpuErrchk(cudaMemcpy(d_input, h_input, byte_size,
-//		cudaMemcpyHostToDevice));
-//
-//	reduction_neighbored_pairs_improved << < grid, block >> > (d_input, d_temp, size);
-//
-//	gpuErrchk(cudaDeviceSynchronize());
-//	gpuErrchk(cudaMemcpy(h_ref, d_temp, temp_array_byte_size, cudaMemcpyDeviceToHost));
-//
-//	int gpu_result = 0;
-//	for (int i = 0; i < grid.x; i++)
-//	{
-//		gpu_result += h_ref[i];
-//	}
-//
-//	compare_results(gpu_result, cpu_result);
-//
-//	gpuErrchk(cudaFree(d_input));
-//	gpuErrchk(cudaFree(d_temp));
-//	free(h_input);
-//	free(h_ref);
-//
-//	gpuErrchk(cudaDeviceReset());
-//	return 0;
-//}
+int main(int argc, char ** argv)
+{
+	printf("Running parallel reduction with neighbored pairs improved kernel \n");
+
+	int size = 1 << 27;
+	int byte_size = size * sizeof(int);
+	int block_size = 128;
+
+	int * h_input, *h_ref;
+	h_input = (int*)malloc(byte_size);
+
+	initialize(h_input, size, INIT_RANDOM);
+
+	int cpu_result = reduction_cpu(h_input, size);
+
+	dim3 block(block_size);
+	dim3 grid(size / block.x);
+
+	printf("Kernel launch parameters || grid : %d, block : %d \n", grid.x, block.x);
+
+	int temp_array_byte_size = sizeof(int)* grid.x;
+
+	h_ref = (int*)malloc(temp_array_byte_size);
+
+	int * d_input, *d_temp;
+	gpuErrchk(cudaMalloc((void**)&d_input, byte_size));
+	gpuErrchk(cudaMalloc((void**)&d_temp, temp_array_byte_size));
+
+	gpuErrchk(cudaMemset(d_temp, 0, temp_array_byte_size));
+	gpuErrchk(cudaMemcpy(d_input, h_input, byte_size,
+		cudaMemcpyHostToDevice));
+
+	reduction_neighbored_pairs_improved << < grid, block >> > (d_input, d_temp, size);
+
+	gpuErrchk(cudaDeviceSynchronize());
+	gpuErrchk(cudaMemcpy(h_ref, d_temp, temp_array_byte_size, cudaMemcpyDeviceToHost));
+
+	int gpu_result = 0;
+	for (int i = 0; i < grid.x; i++)
+	{
+		gpu_result += h_ref[i];
+	}
+
+	compare_results(gpu_result, cpu_result);
+
+	gpuErrchk(cudaFree(d_input));
+	gpuErrchk(cudaFree(d_temp));
+	free(h_input);
+	free(h_ref);
+
+	gpuErrchk(cudaDeviceReset());
+	return 0;
+}

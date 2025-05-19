@@ -15,18 +15,19 @@ __global__ void intrinsic(float *ptr)
 	*ptr = __powf(*ptr, 2.0f);
 }
 
-//int main()
-//{
-//	float value = 23;	
-//	int SIZE = sizeof(float);
-//
-//	float *d_val;
-//	cudaMalloc((void**)&d_val, SIZE);
-//	cudaMemcpy(d_val, &value, SIZE, cudaMemcpyHostToDevice);
-//	standard << <1, 1 >> > (d_val);
-//	intrinsic << <1, 1 >> > (d_val);
-//	cudaDeviceSynchronize();
-//
-//	cudaDeviceReset();
-//	return 0;
-//}
+// nvcc --ptx -o standard_intrinsic.ptx 3_standard_intrinsic.cu 
+int main()
+{
+	float value = 23;	
+	int SIZE = sizeof(float);
+
+	float *d_val;
+	cudaMalloc((void**)&d_val, SIZE);
+	cudaMemcpy(d_val, &value, SIZE, cudaMemcpyHostToDevice);
+	standard << <1, 1 >> > (d_val);
+	intrinsic << <1, 1 >> > (d_val);
+	cudaDeviceSynchronize();
+
+	cudaDeviceReset();
+	return 0;
+}

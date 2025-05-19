@@ -15,33 +15,40 @@ __global__ void event_test()
 	}
 }
 
-//int main(int argc, char ** argv)
-//{
-//	int size = 1 << 12;
-//
-//	dim3 block(128);
-//	dim3 grid(size / block.x);
-//
-//	cudaEvent_t start, end;
-//
-//	cudaEventCreate(&start);
-//	cudaEventCreate(&end);
-//
-//	cudaEventRecord(start);
-//
-//	event_test << < grid,block >>> ();
-//
-//	cudaEventRecord(end);
-//	cudaEventSynchronize(end);
-//
-//	float time;
-//	cudaEventElapsedTime(&time, start, end);
-//
-//	printf("Kernel execution time using events : %f \n",time);
-//
-//	cudaEventDestroy(start);
-//	cudaEventDestroy(end);
-//
-//	cudaDeviceReset();
-//	return 0;
-//}
+int main(int argc, char ** argv)
+{
+	int size = 1 << 12;
+
+	dim3 block(128);
+	dim3 grid(size / block.x);
+
+	cudaEvent_t start, end;
+
+	// create events
+	cudaEventCreate(&start);
+	cudaEventCreate(&end);
+
+	// push event to queue before kernel launch
+	cudaEventRecord(start);
+
+	event_test << < grid,block >>> ();
+
+	// push event to queue after kernel launch
+	cudaEventRecord(end);
+	// sync to make sure event is finished
+	// mainly to block host operation until event is reached and finished
+	cudaEventSynchronize(end);
+
+	float time;
+	// check time cost
+	cudaEventElapsedTime(&time, start, end);
+
+	printf("Kernel execution time using events : %f \n",time);
+
+	// destroy events
+	cudaEventDestroy(start);
+	cudaEventDestroy(end);
+
+	cudaDeviceReset();
+	return 0;
+}
